@@ -220,11 +220,15 @@ class ThermalImageGenerator:
 
         thermal_rgb = self.render_flir(temp)
 
+        top_hotspots = self._extract_top_hotspots(temp, hotspot_count)
+        hotspot_centers = [(x, y) for x, y, _ in top_hotspots]
+        hotspot_temps = [t for _, _, t in top_hotspots]
+
         return ThermalFrame(
             image=temp,
             mask=train_mask,
-            centers=[(cpu_cx, cpu_cy), (gpu_cx, gpu_cy), (fan_cx, fan_cy)],
-            temperatures=[float(temp[int(cpu_cy), int(cpu_cx)]), float(temp[int(gpu_cy), int(gpu_cx)]), float(temp[int(fan_cy), int(fan_cx)])],
+            centers=hotspot_centers,
+            temperatures=hotspot_temps,
             width=self.width,
             height=self.height,
             thermal_image=thermal_rgb,
@@ -314,6 +318,28 @@ class ThermalImageGenerator:
         noisy[ys, xs] = np.clip(noisy[ys, xs] + dead_delta, ambient - 3.0, 98.0)
 
         return noisy
+
+    def _extract_top_hotspots(self, temp: np.ndarray, hotspot_count: int) -> list[Tuple[float, float, float]]:
+        """Extract top-N distinct hotspot peaks using simple non-maximum suppression."""
+        count = int(np.clip(hotspot_count, 1, 5))
+        work = temp.copy()
+        peaks: list[Tuple[float, float, float]] = []
+
+        suppress_r = max(6, int(min(self.width, self.height) * 0.035))
+
+        for _ in range(count):
+            flat_idx = int(np.argmax(work))
+            y, x = np.unravel_index(flat_idx, work.shape)
+            t = float(work[y, x])
+            peaks.append((float(x), float(y), t))
+
+            y0 = max(0, y - suppress_r)
+            y1 = min(self.height, y + suppress_r + 1)
+            x0 = max(0, x - suppress_r)
+            x1 = min(self.width, x + suppress_r + 1)
+            work[y0:y1, x0:x1] = -1e9
+
+        return peaks
 
     @staticmethod
     def _gaussian_2d(
