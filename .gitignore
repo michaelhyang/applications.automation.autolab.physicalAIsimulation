@@ -28,3 +28,6 @@ models/*.bin
 
 # Logs
 *.log
+
+# Local UI state
+.physicalai_ui_state.json
