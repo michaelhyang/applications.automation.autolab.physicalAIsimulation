@@ -36,12 +36,12 @@ jobs:
 
           echo "Checking for existing PR..."
           PR_URL=""
-          PR_VIEW_ERROR_FILE=$(mktemp /tmp/gh-pr-view-error.XXXXXX)
+          PR_VIEW_ERROR_FILE=$(mktemp)
           if ! PR_URL=$(gh pr view "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
             --json url -q '.url' 2>"$PR_VIEW_ERROR_FILE"); then
-            if ! grep -qi "no pull requests found" "$PR_VIEW_ERROR_FILE"; then
-              echo "gh pr view failed unexpectedly:"
+            if [ -s "$PR_VIEW_ERROR_FILE" ]; then
+              echo "gh pr view output:"
               cat "$PR_VIEW_ERROR_FILE"
             fi
             PR_URL=""
