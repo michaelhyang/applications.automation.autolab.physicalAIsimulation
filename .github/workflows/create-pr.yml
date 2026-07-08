@@ -27,7 +27,7 @@ jobs:
             --body "Auto-created, CI checked, and merged by GitHub Actions." \
             --base "${{ github.event.repository.default_branch }}" \
             --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
-            --repo michaelhyang/applications.automation.autolab.physicalAIsimulation)
+            --repo "${{ github.repository }}")
           
           echo "PR created at $PR_URL"
 
