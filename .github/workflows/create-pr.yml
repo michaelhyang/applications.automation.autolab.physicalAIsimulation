@@ -23,7 +23,10 @@ jobs:
           # 1. Find or create PR for this branch
           BASE_BRANCH="${{ github.event.repository.default_branch }}"
           if [ -z "$BASE_BRANCH" ]; then
-            BASE_BRANCH=$(gh repo view "${{ github.repository }}" --json defaultBranchRef -q '.defaultBranchRef.name')
+            if ! BASE_BRANCH=$(gh repo view "${{ github.repository }}" --json defaultBranchRef -q '.defaultBranchRef.name'); then
+              echo "Failed to determine default branch via gh repo view. Aborting."
+              exit 1
+            fi
           fi
 
           if [ -z "$BASE_BRANCH" ]; then
@@ -32,9 +35,18 @@ jobs:
           fi
 
           echo "Checking for existing PR..."
-          PR_URL=$(gh pr view "${{ github.ref_name }}" \
+          PR_URL=""
+          PR_VIEW_ERROR_FILE=$(mktemp /tmp/gh-pr-view-error.XXXXXX)
+          if ! PR_URL=$(gh pr view "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            --json url -q '.url' 2>/dev/null || true)
+            --json url -q '.url' 2>"$PR_VIEW_ERROR_FILE"); then
+            if ! grep -qi "no pull requests found" "$PR_VIEW_ERROR_FILE"; then
+              echo "gh pr view failed unexpectedly:"
+              cat "$PR_VIEW_ERROR_FILE"
+            fi
+            PR_URL=""
+          fi
+          rm -f "$PR_VIEW_ERROR_FILE"
 
           if [ -z "$PR_URL" ]; then
             PR_URL=$(gh pr list \
