@@ -26,6 +26,15 @@ jobs:
             --repo "${{ github.repository }}" \
             --json url -q '.url' 2>/dev/null || true)
 
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr list \
+              --repo "${{ github.repository }}" \
+              --base "${{ github.event.repository.default_branch }}" \
+              --head "${{ github.ref_name }}" \
+              --state open \
+              --json url -q '.[0].url' 2>/dev/null || true)
+          fi
+
           if [ -n "$PR_URL" ]; then
             echo "Found existing PR at $PR_URL"
           else
