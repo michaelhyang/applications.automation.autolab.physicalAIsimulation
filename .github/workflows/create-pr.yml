@@ -20,25 +20,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MY_PAT }}
         run: |
-          # 1. Create the PR or reuse an existing one
+          # 1. Close any existing PR for this branch, then create a fresh one
           echo "Checking for existing PR..."
-          PR_URL=$(gh pr list \
+          EXISTING_PR=$(gh pr list \
             --repo "${{ github.repository }}" \
             --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
-            --json url -q '.[0].url')
+            --json number -q '.[0].number')
 
-          if [ -z "$PR_URL" ]; then
-            echo "Creating PR..."
-            PR_URL=$(gh pr create \
-              --title "Automated PR: ${{ github.ref_name }}" \
-              --body "Auto-created, CI checked, and merged by GitHub Actions." \
-              --base "${{ github.event.repository.default_branch }}" \
-              --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
-              --repo "${{ github.repository }}")
-            echo "PR created at $PR_URL"
-          else
-            echo "PR already exists at $PR_URL"
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Closing existing PR #$EXISTING_PR..."
+            gh pr close "$EXISTING_PR" --repo "${{ github.repository }}"
           fi
+
+          echo "Creating PR..."
+          PR_URL=$(gh pr create \
+            --title "Automated PR: ${{ github.ref_name }}" \
+            --body "Auto-created, CI checked, and merged by GitHub Actions." \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
+            --repo "${{ github.repository }}")
+          echo "PR created at $PR_URL"
 
           # 2. Wait for CI checks to pass
           # --wait 參數會持續輪詢直到所有 checks 通過或超時
