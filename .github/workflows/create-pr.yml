@@ -20,34 +20,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MY_PAT }}
         run: |
-          # 1. Close any existing PR for this branch, then create a fresh one
+          # 1. Find or create PR for this branch
           echo "Checking for existing PR..."
-          EXISTING_PR=$(gh pr list \
+          PR_URL=$(gh pr view \
             --repo "${{ github.repository }}" \
-            --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
-            --json number -q '.[0].number')
+            --json url -q '.url' 2>/dev/null || true)
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "Closing existing PR #$EXISTING_PR..."
-            gh pr close "$EXISTING_PR" --repo "${{ github.repository }}"
+          if [ -n "$PR_URL" ]; then
+            echo "Found existing PR at $PR_URL"
+          else
+            echo "Creating PR..."
+            PR_URL=$(gh pr create \
+              --title "Automated PR: ${{ github.ref_name }}" \
+              --body "Auto-created, CI checked, and merged by GitHub Actions." \
+              --base "${{ github.event.repository.default_branch }}" \
+              --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
+              --repo "${{ github.repository }}")
+            echo "PR created at $PR_URL"
           fi
 
-          echo "Creating PR..."
-          PR_URL=$(gh pr create \
-            --title "Automated PR: ${{ github.ref_name }}" \
-            --body "Auto-created, CI checked, and merged by GitHub Actions." \
-            --base "${{ github.event.repository.default_branch }}" \
-            --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
-            --repo "${{ github.repository }}")
-          echo "PR created at $PR_URL"
-
           # 2. Wait for CI checks to pass
-          # --wait 參數會持續輪詢直到所有 checks 通過或超時
-          # --interval 設定輪詢間隔 (秒)
+          # --watch polls until all checks pass or timeout
+          # --interval sets the polling interval (seconds)
           echo "Waiting for CI checks to pass..."
           if gh pr checks "$PR_URL" --watch --interval 10; then
             echo "CI checks passed. Proceeding to merge."
-            
+
             # 3. Merge the PR
             gh pr merge "$PR_URL" --merge --auto-delete-branch
           else
