@@ -21,6 +21,16 @@ jobs:
           GH_TOKEN: ${{ secrets.MY_PAT }}
         run: |
           # 1. Find or create PR for this branch
+          BASE_BRANCH="${{ github.event.repository.default_branch }}"
+          if [ -z "$BASE_BRANCH" ]; then
+            BASE_BRANCH=$(gh repo view "${{ github.repository }}" --json defaultBranchRef -q '.defaultBranchRef.name')
+          fi
+
+          if [ -z "$BASE_BRANCH" ]; then
+            echo "Unable to determine default branch. Aborting."
+            exit 1
+          fi
+
           echo "Checking for existing PR..."
           PR_URL=$(gh pr view "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
@@ -29,7 +39,7 @@ jobs:
           if [ -z "$PR_URL" ]; then
             PR_URL=$(gh pr list \
               --repo "${{ github.repository }}" \
-              --base "${{ github.event.repository.default_branch || 'master' }}" \
+              --base "$BASE_BRANCH" \
               --head "${{ github.ref_name }}" \
               --state open \
               --json url -q '.[0].url' 2>/dev/null || true)
@@ -42,7 +52,7 @@ jobs:
             PR_URL=$(gh pr create \
               --title "Automated PR: ${{ github.ref_name }}" \
               --body "Auto-created, CI checked, and merged by GitHub Actions." \
-              --base "${{ github.event.repository.default_branch || 'master' }}" \
+              --base "$BASE_BRANCH" \
               --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
               --repo "${{ github.repository }}")
             echo "PR created at $PR_URL"
