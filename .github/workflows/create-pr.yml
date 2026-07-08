@@ -22,14 +22,14 @@ jobs:
         run: |
           # 1. Find or create PR for this branch
           echo "Checking for existing PR..."
-          PR_URL=$(gh pr view \
+          PR_URL=$(gh pr view "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
             --json url -q '.url' 2>/dev/null || true)
 
           if [ -z "$PR_URL" ]; then
             PR_URL=$(gh pr list \
               --repo "${{ github.repository }}" \
-              --base "${{ github.event.repository.default_branch }}" \
+              --base "${{ github.event.repository.default_branch || 'master' }}" \
               --head "${{ github.ref_name }}" \
               --state open \
               --json url -q '.[0].url' 2>/dev/null || true)
@@ -42,7 +42,7 @@ jobs:
             PR_URL=$(gh pr create \
               --title "Automated PR: ${{ github.ref_name }}" \
               --body "Auto-created, CI checked, and merged by GitHub Actions." \
-              --base "${{ github.event.repository.default_branch }}" \
+              --base "${{ github.event.repository.default_branch || 'master' }}" \
               --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
               --repo "${{ github.repository }}")
             echo "PR created at $PR_URL"
