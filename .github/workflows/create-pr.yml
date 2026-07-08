@@ -53,7 +53,7 @@ jobs:
               --title "Automated PR: ${{ github.ref_name }}" \
               --body "Auto-created, CI checked, and merged by GitHub Actions." \
               --base "$BASE_BRANCH" \
-              --head "${{ github.repository_owner }}:${{ github.ref_name }}" \
+              --head "${{ github.ref_name }}" \
               --repo "${{ github.repository }}")
             echo "PR created at $PR_URL"
           fi
